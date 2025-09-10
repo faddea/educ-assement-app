@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Encuesta</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gradient-to-br from-zinc-900 to-zinc-950 text-white min-h-screen flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="p-4 bg-zinc-800 shadow-md flex justify-between items-center">
+    <h1 class="text-lg md:text-xl font-bold">Encuesta de Evaluación</h1>
+    <p class="text-sm text-gray-400" id="fecha"></p>
+  </header>
+
+  <!-- Main -->
+  <main class="flex-1 flex items-center justify-center px-4">
+    <div class="bg-zinc-800 w-full max-w-md p-6 rounded-2xl shadow-2xl space-y-6">
+
+      <!-- Info -->
+      <div class="text-center">
+        <p class="text-base opacity-80">Materia:</p>
+        <p id="materia" class="text-xl font-bold text-blue-400">-</p>
+      </div>
+
+      <!-- Progreso -->
+      <div class="w-full bg-zinc-700 rounded-full h-2">
+        <div id="progressBar" class="bg-blue-500 h-2 rounded-full transition-all duration-500"></div>
+      </div>
+
+      <!-- Pregunta -->
+      <div id="preguntaContenedor" class="space-y-4">
+        <p id="pregunta" class="text-lg md:text-xl font-semibold text-center">Pregunta</p>
+        <div id="opciones" class="flex flex-col gap-3"></div>
+      </div>
+
+      <!-- Botones -->
+      <div class="space-y-3">
+        <button id="btnSiguiente" onclick="siguientePregunta()" 
+          class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl w-full font-semibold transition-colors">
+          Siguiente
+        </button>
+        <button id="btnVerAnalisis" onclick="verAnalisis()" 
+          class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl w-full font-semibold hidden transition-colors">
+          Puntuar docente
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 🔹 Configuración de Supabase
+    const SUPABASE_URL = "https://isxvmzvealioazfqmwjc.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzeHZtenZlYWxpb2F6ZnFtd2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczODYzMDEsImV4cCI6MjA3Mjk2MjMwMX0.0HrbZt7dQBTuM2ce4d4onUp-V_FKoEXyJxKD9Fcbnk4";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const materia = localStorage.getItem("materiaSeleccionada") || "Sin materia";
+    const docente = localStorage.getItem("docenteAsignado") || "Sin docente";
+    const temas = localStorage.getItem("temasCurriculares") || "No especificado";
+    const fechaActual = new Date().toLocaleDateString('es-AR');
+
+    document.getElementById("materia").innerText = materia;
+    document.getElementById("fecha").innerText = `Fecha: ${fechaActual}`;
+
+    const preguntas = [
+      "¿Entendiste el tema?",
+      "¿Fue clara la explicación?",
+      "¿Pudiste hacer las actividades?",
+      "¿Te sentiste motivado?"
+    ];
+    const opciones = ["Sí", "No", "Más o menos"];
+
+    let respuestas = [];
+    let indice = 0;
+
+    function mostrarPregunta() {
+      document.getElementById("pregunta").innerText = preguntas[indice];
+      const contenedor = document.getElementById("opciones");
+      contenedor.innerHTML = "";
+
+      opciones.forEach(op => {
+        const btn = document.createElement("button");
+        btn.innerText = op;
+        btn.className = "w-full bg-zinc-700 hover:bg-zinc-600 px-4 py-3 rounded-lg font-medium transition";
+        btn.onclick = () => {
+          document.querySelectorAll("#opciones button").forEach(b => b.classList.remove("ring-2", "ring-blue-400"));
+          btn.classList.add("ring-2", "ring-blue-400");
+        };
+        contenedor.appendChild(btn);
+      });
+
+      const progress = ((indice) / preguntas.length) * 100;
+      document.getElementById("progressBar").style.width = progress + "%";
+
+      gsap.from("#preguntaContenedor", { opacity: 0, y: 30, duration: 0.5 });
+    }
+
+    function siguientePregunta() {
+      const seleccionado = document.querySelector("#opciones button.ring-2");
+      if (!seleccionado) {
+        alert("Por favor selecciona una respuesta.");
+        return;
+      }
+
+      respuestas.push(seleccionado.innerText);
+      indice++;
+
+      if (indice >= preguntas.length) {
+        document.getElementById("preguntaContenedor").innerHTML = "<p class='text-xl font-bold text-center'>¡Gracias por responder!</p>";
+        document.getElementById("progressBar").style.width = "100%";
+        document.getElementById("btnSiguiente").classList.add("hidden");
+        document.getElementById("btnVerAnalisis").classList.remove("hidden");
+      } else {
+        mostrarPregunta();
+      }
+    }
+
+    async function verAnalisis() {
+  try {
+    const encuestaId = localStorage.getItem("encuestaId");
+
+    const { error } = await supabaseClient
+      .from("encuesta")
+      .update({
+        respuestas: respuestas, 
+        preguntas: preguntas
+      })
+      .eq("id", encuestaId); // 👈 actualizamos solo esa fila
+
+    if (error) {
+      console.error("Error al guardar respuestas:", error);
+      alert("Ocurrió un error ❌");
+    } else {
+      console.log("Respuestas guardadas ✅");
+      window.location.href = "calificación.html";
+    }
+  } catch (err) {
+    console.error("Error inesperado:", err);
+  }
+}
+
+
+    // Primera pregunta
+    window.onload = mostrarPregunta;
+  </script>
+</body>
+</html>

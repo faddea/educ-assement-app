@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Encuesta - Formulario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Quitar borde naranja en focus */
+    select:focus, input:focus, textarea:focus {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-zinc-900 to-zinc-950 min-h-screen flex items-center justify-center px-4 font-sans overflow-hidden">
+
+  <main id="form-container" class="bg-zinc-800/90 backdrop-blur-xl text-white p-8 rounded-3xl shadow-2xl w-full max-w-xl space-y-6 border border-zinc-700/40">
+
+    <!-- Paso 1 -->
+    <section class="form-step space-y-6" id="step1">
+      <h1 class="text-3xl font-bold text-center">Seleccionar Materia</h1>
+      <div>
+        <label for="materias" class="block mb-2 text-lg">Materia:</label>
+        <select id="materias" class="w-full p-3 rounded-xl bg-zinc-700/70 text-white transition" required>
+          <option value="">-- Elige una materia --</option>
+          <option value="Matemáticas aplicadas">Matemáticas aplicadas</option>
+          <option value="Lengua y Literatura">Lengua y Literatura</option>
+          <option value="Hardware IV">Hardware IV</option>
+          <option value="Software IV">Software IV</option>
+          <option value="Proyecto Tecnológico">Proyecto Tecnológico</option>
+          <option value="Redes">Redes</option>
+          <option value="Practicas profesionalizantes">Practicas profesionalizantes</option>
+          <option value="Programación II">Programación II</option>
+          <option value="Organización y gestión">Organización y gestión</option>
+          <option value="Formación ética">Formación ética</option>
+        </select>
+      </div>
+      <h1 class="text-3xl font-bold text-center">Docente Asignado</h1>
+      <div>
+        <label for="docente" class="block mb-2 text-lg">Docente:</label>
+        <input type="text" id="docente" class="w-full p-3 rounded-xl bg-zinc-700/70 text-white transition" readonly />
+      </div>
+      <button onclick="nextStep(1)" class="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded-xl text-white font-semibold shadow-lg transition transform hover:scale-105">
+        Siguiente
+      </button>
+    </section>
+
+    <!-- Paso 2 -->
+    <section class="form-step space-y-6 hidden" id="step2">
+      <h1 class="text-3xl font-bold text-center">Temas Curriculares</h1>
+      <div>
+        <label for="temas" class="block mb-2 text-lg">Temas:</label>
+        <textarea id="temas" class="w-full p-3 rounded-xl bg-zinc-700/70 text-white transition" rows="4" placeholder="Escribe los temas..." required></textarea>
+      </div>
+      <button onclick="finishForm()" class="w-full bg-green-600 hover:bg-green-500 p-3 rounded-xl text-white font-semibold shadow-lg transition transform hover:scale-105">
+        Finalizar
+      </button>
+    </section>
+
+  </main>
+
+<script>
+  // 🔑 Configuración Supabase
+  const SUPABASE_URL = "https://isxvmzvealioazfqmwjc.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzeHZtenZlYWxpb2F6ZnFtd2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczODYzMDEsImV4cCI6MjA3Mjk2MjMwMX0.0HrbZt7dQBTuM2ce4d4onUp-V_FKoEXyJxKD9Fcbnk4";
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Docentes por materia
+  const docentes = {
+    "Matemáticas aplicadas": "Prof. Marcos Virgilio",
+    "Lengua y Literatura": "Prof. Walter Olivera",
+    "Hardware IV": "Prof. Fabían Stangafero",
+    "Software IV": "Prof. Ana Torres",
+    "Proyecto Tecnológico": "Prof. Leylen Seipel",
+    "Redes": "Prof. Fabían Stangafero",
+    "Practicas profesionalizantes": "Prof. Diego Gautero",
+    "Programación II": "Prof. Javier Fleitas",
+    "Organización y gestión": "Prof. Javier Fleitas",
+    "Formación ética": "Prof. Mariana Lassaga",
+  };
+
+  // Actualizar docente según materia
+  function actualizarDocente() {
+    const materia = document.getElementById('materias').value;
+    document.getElementById('docente').value = docentes[materia] || '';
+  }
+
+  // Cambiar de paso
+  function nextStep(currentStep) {
+    const materia = document.getElementById('materias').value;
+    if (currentStep === 1 && !materia) {
+      alert("Por favor, selecciona una materia para continuar.");
+      return;
+    }
+    const current = document.getElementById(`step${currentStep}`);
+    const next = document.getElementById(`step${currentStep + 1}`);
+
+    gsap.to(current, {
+      x: -100, opacity: 0, duration: 0.6, ease: "power2.inOut",
+      onComplete: () => {
+        current.classList.add("hidden");
+        next.classList.remove("hidden");
+        gsap.from(next, { x: 100, opacity: 0, duration: 0.6, ease: "power2.inOut" });
+      }
+    });
+  }
+
+  // Finalizar formulario → Guardar en Supabase
+  // Finalizar formulario → Guardar en Supabase
+async function finishForm() {
+  const materia = document.getElementById('materias').value;
+  const docente = document.getElementById('docente').value;
+  const tema = document.getElementById('temas').value.trim();
+
+  if (!tema) {
+    alert("Por favor, ingresa los temas curriculares para finalizar.");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("encuesta")
+      .insert([{
+        materia: materia,
+        tema: tema,
+        docente: docente
+      }])
+      .select("id"); // 👈 pedimos que devuelva el id
+
+    if (error) throw error;
+
+    const encuestaId = data[0].id;
+    localStorage.setItem("encuestaId", encuestaId); // 👈 guardamos el id
+
+    console.log("✅ Encuesta creada con ID:", encuestaId);
+    alert("Encuesta iniciada ✅");
+
+    // Pasamos a materia.html
+    window.location.href = "materia.html";
+
+  } catch (err) {
+    console.error("❌ Error al guardar en Supabase:", err);
+    alert("❌ Error al guardar en Supabase");
+  }
+}
+
+  // Animación inicial
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById('materias').addEventListener('change', actualizarDocente);
+    gsap.from("#form-container", { opacity: 0, y: 50, duration: 1, ease: "power3.out" });
+  });
+</script>
+
+
+</body>
+</html>

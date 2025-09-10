@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Análisis de Encuesta</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-zinc-900 text-white min-h-screen flex flex-col">
+
+  <header class="bg-zinc-800 p-4 shadow-md flex justify-between items-center">
+    <h1 class="text-lg md:text-xl font-bold">Análisis de Encuesta</h1>
+    <div class="space-x-2">
+      <button onclick="volver()" id="btnVolver" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-semibold">Volver</button>
+      <button onclick="salir()" id="btnSalir" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-semibold">Salir</button>
+    </div>
+  </header>
+
+  <main class="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+    
+    <div class="bg-zinc-800 p-6 rounded-2xl shadow-lg col-span-1 md:col-span-2">
+      <h2 class="text-lg opacity-80 mb-4">Temas Curriculares</h2>
+      <div id="temaCard" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <div class="bg-zinc-800 p-6 rounded-2xl shadow-lg">
+      <h2 class="text-lg opacity-80 mb-2">Materia</h2>
+      <p id="materia" class="text-2xl font-bold text-blue-400">-</p>
+      <p id="fecha" class="text-gray-400 text-sm mt-1"></p>
+    </div>
+
+    <div class="bg-zinc-800 p-6 rounded-2xl shadow-lg">
+      <h2 class="text-lg opacity-80 mb-2">Puntuación al Docente</h2>
+      <p id="puntajeDocente" class="text-4xl font-bold text-yellow-400">-</p>
+    </div>
+
+    <div class="bg-zinc-800 p-6 rounded-2xl shadow-lg">
+      <h2 class="text-lg opacity-80 mb-2">Respuestas Totales</h2>
+      <p id="total" class="text-4xl font-bold text-green-400">0</p>
+    </div>
+
+    <div class="bg-zinc-800 p-6 rounded-2xl shadow-lg col-span-1 md:col-span-2">
+      <h2 class="text-lg font-semibold mb-4">Respuestas por Pregunta</h2>
+      <canvas id="barChart" height="120"></canvas>
+    </div>
+
+    <div class="bg-zinc-800 p-6 rounded-2xl shadow-lg col-span-1 md:col-span-2">
+      <h2 class="text-lg font-semibold mb-4">Distribución de Respuestas</h2>
+      <canvas id="pieChart" height="120"></canvas>
+    </div>
+  </main>
+
+  <script>
+  // 🔹 Configura tu conexión con Supabase
+  const SUPABASE_URL = "https://isxvmzvealioazfqmwjc.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzeHZtenZlYWxpb2F6ZnFtd2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczODYzMDEsImV4cCI6MjA3Mjk2MjMwMX0.0HrbZt7dQBTuM2ce4d4onUp-V_FKoEXyJxKD9Fcbnk4";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const materia = localStorage.getItem("materiaSeleccionada") || "Sin materia";
+
+    // 🔹 Obtener la evaluación usando el id guardado
+const encuestaId = localStorage.getItem("encuestaId");
+
+if (!encuestaId) {
+  alert("No se encontró la encuesta en memoria.");
+  return;
+}
+
+const { data, error } = await supabase
+  .from("encuesta")
+  .select("*")
+  .eq("id", encuestaId)
+  .single();
+
+if (error) {
+  console.error("Error cargando datos:", error.message);
+  return;
+}
+
+const ultima = data; // ✅ ya tenemos el único registro
+
+
+    document.getElementById("materia").innerText = ultima.materia || materia;
+    document.getElementById("fecha").innerText = "Fecha: " + new Date(ultima.fecha).toLocaleDateString("es-AR");
+    document.getElementById("puntajeDocente").innerText = ultima.puntaje_docente || "-";
+    document.getElementById("total").innerText = ultima.respuestas ? Object.keys(ultima.respuestas).length : 0;
+
+    // 🔹 Tema (string único en tu tabla)
+    const temaCard = document.getElementById("temaCard");
+    const chip = document.createElement("span");
+    chip.className = "bg-blue-600/70 text-white px-4 py-2 rounded-xl text-sm font-medium shadow";
+    chip.innerText = ultima.tema;
+    temaCard.appendChild(chip);
+
+    // 🔹 Procesar respuestas (jsonb → objeto tipo { "Pregunta1": "Sí", "Pregunta2": "No", ... })
+    const respuestasObj = ultima.respuestas || {};
+    const preguntas = Object.keys(respuestasObj);
+    const respuestas = Object.values(respuestasObj);
+
+    // Conteo global
+    const conteo = { "Sí": 0, "No": 0, "Más o menos": 0 };
+    respuestas.forEach(r => {
+      if (conteo[r] !== undefined) conteo[r]++;
+    });
+
+    // 🔹 Gráfico de barras
+    const ctxBar = document.getElementById("barChart").getContext("2d");
+    new Chart(ctxBar, {
+      type: "bar",
+      data: {
+        labels: preguntas,
+        datasets: [
+          {
+            label: "Sí",
+            data: preguntas.map((p, i) => respuestas[i] === "Sí" ? 1 : 0),
+            backgroundColor: "#3b82f6"
+          },
+          {
+            label: "No",
+            data: preguntas.map((p, i) => respuestas[i] === "No" ? 1 : 0),
+            backgroundColor: "#ef4444"
+          },
+          {
+            label: "Más o menos",
+            data: preguntas.map((p, i) => respuestas[i] === "Más o menos" ? 1 : 0),
+            backgroundColor: "#eab308"
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#fff" } } },
+        scales: {
+          x: { ticks: { color: "#fff" } },
+          y: { ticks: { color: "#fff", precision: 0 } }
+        }
+      }
+    });
+
+    // 🔹 Gráfico circular
+    const ctxPie = document.getElementById("pieChart").getContext("2d");
+    new Chart(ctxPie, {
+      type: "pie",
+      data: {
+        labels: Object.keys(conteo),
+        datasets: [{
+          data: Object.values(conteo),
+          backgroundColor: ["#3b82f6", "#ef4444", "#eab308"]
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#fff" } } }
+      }
+    });
+  });
+
+  // 🔹 Navegación
+  function volver() { window.location.href = "prueba.html"; }
+  function salir() { window.location.href = "index.html"; }
+</script>
+
+</body>
+</html>

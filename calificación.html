@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Evaluación del Docente</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- íconos opcionales -->
+  <script src="https://unpkg.com/lucide/dist/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+</head>
+<body class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white min-h-screen flex items-center justify-center px-4 font-sans">
+
+  <main class="bg-white/6 backdrop-blur-md p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-xl space-y-6 text-center border border-white/10">
+    <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-blue-400">
+      Evaluación del Docente
+    </h1>
+
+    <p class="text-lg font-medium">
+      Materia: <span id="materia" class="text-green-300 font-semibold">Sin materia</span>
+    </p>
+
+    <p class="text-base sm:text-lg">Califica al docente del <strong>1</strong> (muy malo) al <strong>10</strong> (excelente):</p>
+
+    <!-- Grid 1..10 -->
+    <div id="opciones" class="grid grid-cols-5 sm:grid-cols-10 gap-3 justify-center max-w-md mx-auto">
+      <!-- Botones generados en HTML para compatibilidad y copia fácil -->
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="1" aria-pressed="false">1</button>
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="2" aria-pressed="false">2</button>
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="3" aria-pressed="false">3</button>
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="4" aria-pressed="false">4</button>
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="5" aria-pressed="false">5</button>
+
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="6" aria-pressed="false">6</button>
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="7" aria-pressed="false">7</button>
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="8" aria-pressed="false">8</button>
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="9" aria-pressed="false">9</button>
+      <button type="button" class="score-btn w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/20 flex items-center justify-center transition-transform transform hover:scale-110 focus:outline-none" data-value="10" aria-pressed="false">10</button>
+    </div>
+
+    <div class="space-y-3 pt-2">
+      <!-- Botón enviar visible -->
+      <button id="btnEnviar" type="button" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl w-full font-semibold">
+        <!-- icono opcional -->
+        <span class="inline-flex items-center gap-2 justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+          Enviar
+        </span>
+      </button>
+
+      <!-- Botones ocultos inicialmente: NO contienen 'flex' junto a 'hidden' -->
+      <button id="btnAnalisis" type="button" class="hidden w-full font-semibold rounded-xl px-6 py-3 items-center justify-center gap-2 bg-green-600 hover:bg-green-700">
+        Ver análisis
+      </button>
+
+      <button id="btnVolver" type="button" class="hidden w-full font-semibold rounded-xl px-6 py-3 items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700">
+        Volver al Formulario
+      </button>
+
+      <button id="btnSalir" type="button" class="hidden w-full font-semibold rounded-xl px-6 py-3 items-center justify-center gap-2 bg-red-600 hover:bg-red-700">
+        Salir
+      </button>
+    </div>
+  </main>
+
+  <script>
+  // 🔹 Configura tu conexión con Supabase
+  const SUPABASE_URL = "https://isxvmzvealioazfqmwjc.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzeHZtenZlYWxpb2F6ZnFtd2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczODYzMDEsImV4cCI6MjA3Mjk2MjMwMX0.0HrbZt7dQBTuM2ce4d4onUp-V_FKoEXyJxKD9Fcbnk4";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const materia = localStorage.getItem("materiaSeleccionada") || "Sin materia";
+    document.getElementById("materia").innerText = materia;
+
+    let puntajeSeleccionado = null;
+
+    const scoreButtons = document.querySelectorAll('.score-btn');
+    scoreButtons.forEach(btn => {
+      btn.addEventListener('click', () => seleccionarPuntaje(btn));
+    });
+
+    function seleccionarPuntaje(btn) {
+      scoreButtons.forEach(b => {
+        b.classList.remove('bg-blue-500', 'text-white', 'scale-105', 'border-blue-400');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      btn.classList.add('bg-blue-500', 'text-white', 'scale-105', 'border-blue-400');
+      btn.setAttribute('aria-pressed', 'true');
+      puntajeSeleccionado = Number(btn.dataset.value);
+    }
+
+    document.getElementById('btnEnviar').addEventListener('click', async () => {
+      if (!puntajeSeleccionado) {
+        alert('Por favor, selecciona un puntaje del 1 al 10.');
+        return;
+      }
+
+      // 🔹 Actualizar el registro existente con el puntaje
+const encuestaId = localStorage.getItem("encuestaId");
+
+const { error } = await supabase
+  .from("encuesta")
+  .update({ puntaje_docente: puntajeSeleccionado }) // 👈 usa la columna correcta de tu tabla
+  .eq("id", encuestaId);
+
+if (error) {
+  console.error("Error al guardar puntaje:", error.message);
+  alert("Hubo un error al guardar. Revisa la consola.");
+  return;
+}
+
+
+      alert('Puntaje enviado correctamente ✅');
+
+      // Ocultar Enviar y mostrar los otros
+      document.getElementById('btnEnviar').classList.add('hidden');
+      ['btnAnalisis', 'btnVolver', 'btnSalir'].forEach(id => {
+        document.getElementById(id).classList.remove('hidden');
+      });
+    });
+
+    document.getElementById('btnAnalisis').addEventListener('click', () => {
+      window.location.href = 'analisis.html';
+    });
+    document.getElementById('btnVolver').addEventListener('click', () => {
+      window.location.href = 'menu.html';
+    });
+    document.getElementById('btnSalir').addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+  });
+
+  // Inicializar íconos (opcional)
+  try { if (window.lucide) lucide.createIcons(); } catch (e) {}
+</script>
+
+</body>
+</html>
